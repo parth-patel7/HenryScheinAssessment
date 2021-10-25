@@ -46,9 +46,18 @@ public class PostTesting {
         }
     }
 
-    // With all inputs in proper format [Write access]
+    // With no authentication/authorization
     @Test
-    public void postPersonWithWriteAccess() throws IOException{
+    public void postPersonWithoutAuth() throws IOException{
+        ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "", "",
+                "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
+        Assert.assertEquals(401, eo.responseCode);
+    }
+
+
+    // With 'Write' authentication/authorization
+    @Test
+    public void postPersonWithWriteAuth() throws IOException{
         Person p = (Person) connect("http://localhost:8083/v1/post-person/", "admin", "testPassword",
                 "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
         Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = " + p.getId()));
@@ -58,38 +67,31 @@ public class PostTesting {
         Assert.assertEquals("1233211233", p.getPhoneNumber());
     }
 
-    // With Read access
+    // With 'Read' authentication/authorization
     @Test
-    public void postPersonWithReadAccess() throws IOException{
+    public void postPersonWithReadAuth() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "testUsername", "testPassword",
                 "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
-        // --------  Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person Where ID = ");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(403, eo.responseCode);
     }
 
-
-    // With no authentication/authorization
-    @Test
-    public void postPersonWithoutAuth() throws IOException{
-        ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "", "",
-                "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
-        Assert.assertEquals(401, eo.responseCode);
-    }
 
     // With incorrect authentication (Both password and username are incorrect)
     @Test
     public void postPersonWithIncorrectAuth() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "Test", "Test",
                 "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(401, eo.responseCode);
     }
 
-
-    // With incorrect 'Read' and 'Write' authentication (Correct password and incorrect username - both Read and Write have same password)
+    // With incorrect 'Read' and 'Write' authentication (Correct password but incorrect username - both Read and Write have same password)
     @Test
     public void postPersonWithIncorrectUsername() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "Test", "testPassword",
                 "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(401, eo.responseCode);
     }
 
@@ -98,6 +100,7 @@ public class PostTesting {
     public void postPersonWithIncorrectWritePass() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "admin", "Testing",
                 "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(401, eo.responseCode);
     }
 
@@ -107,14 +110,17 @@ public class PostTesting {
     public void postPersonWithIncorrectReadPass() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "testUsername", "Testing",
                 "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1233211233\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(401, eo.responseCode);
     }
 
-    // With no username
+
+    // With no firstname
     @Test
     public void postPersonWithNoFirstName() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "admin", "testPassword",
                 "{" + " \"firstName\": \"\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"1231231231\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(400, eo.responseCode);
         Assert.assertEquals("[\"JSON Error: firstName must not be blank\"]", eo.errorData);
     }
@@ -124,19 +130,41 @@ public class PostTesting {
     public void postPersonWithIncorrectPhone() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "admin", "testPassword",
                 "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"12345678912\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(400, eo.responseCode);
         Assert.assertEquals("[\"JSON Error: phoneNumber phoneNumber must be 10 digits.\"]", eo.errorData);
     }
 
-    // With  no username and Phone number greater than 10 digits
+    // With Phone number less than 10 digits
+    @Test
+    public void postPersonWithIncorrectPhone2() throws IOException{
+        ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "admin", "testPassword",
+                "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"123\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
+        Assert.assertEquals(400, eo.responseCode);
+        Assert.assertEquals("[\"JSON Error: phoneNumber phoneNumber must be 10 digits.\"]", eo.errorData);
+    }
+
+    // With  no firstname and Phone number greater than 10 digits
     @Test
     public void postPersonWithIncorrectDetails() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/post-person/", "admin", "testPassword",
                 "{" + " \"firstName\": \"\"," + "  \"lastName\": \"Testing\"," + "  \"phoneNumber\": \"12345678912\"" + " }");
+        Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person"));
         Assert.assertEquals(400, eo.responseCode);
         Assert.assertEquals(true, eo.errorData.contains("\"JSON Error: phoneNumber phoneNumber must be 10 digits.\""));
         Assert.assertEquals(true, eo.errorData.contains("\"JSON Error: firstName must not be blank\""));
     }
+
+    // With firstname but no lastname and phone number
+    @Test
+    public void postPersonWithNoLastNameAndPhone() throws IOException{
+        Person p = (Person) connect("http://localhost:8083/v1/post-person/", "admin", "testPassword",
+                "{" + " \"firstName\": \"Test\"," + "  \"lastName\": \"\"," + "  \"phoneNumber\": \"\"" + " }");
+        Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = " + p.getId()));
+        Assert.assertEquals("Test", p.getFirstName());
+    }
+
 
     @After
     public void clearDB(){

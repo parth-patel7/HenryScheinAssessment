@@ -58,63 +58,57 @@ public class DeleteTesting {
         connection.runQuery(query);
     }
 
-    // With no authentication/authorization and ID exists
+    // With no authentication/authorization and ID present in DB
     @Test
-    public void deletePersonWithoutAuth() throws IOException{
-        ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "", "");
-        Assert.assertEquals(401, eo.responseCode);
-        Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
-        // Message and code
-    }
-
-    // With no authentication/authorization and ID does not exists
-    @Test
-    public void deletePersonWithoutAuthAndID() throws IOException{
+    public void deletePersonWithoutAuthAndIdInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "", "");
         Assert.assertEquals(401, eo.responseCode);
         Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
     }
 
-    // With all inputs in proper format [Write access]
+    // With no authentication/authorization and ID not present in DB
     @Test
-    public void deletePersonWithWriteAccess() throws IOException{
+    public void deletePersonWithoutAuthAndIdNotInDB() throws IOException{
+        ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/21", "", "");
+        Assert.assertEquals(401, eo.responseCode);
+    }
+
+    // With 'Write' authentication/authorization [ID present in DB]
+    @Test
+    public void deletePersonWithWriteAuthAndIdInDB() throws IOException{
         String st = (String) connect("http://localhost:8083/v1/delete-person/20", "admin", "testPassword");
         Assert.assertEquals(false, connection.checkIfDataExists("Select * from Person Where ID = 20"));
         Assert.assertEquals("deleted person with Id: 20", st);
     }
 
-    // With 'Write' access but ID not in DB
+    // With 'Write' authentication/authorization [ID not present in DB]
     @Test
-    public void deletePersonWithWriteAndIdNotPresent() throws IOException{
+    public void deletePersonWithWriteAuthAndIdNotInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/21", "admin", "testPassword");
         Assert.assertEquals(404, eo.responseCode);
         Assert.assertEquals("Cannot find Person with id: 21", eo.errorData);
-        Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
     }
 
-
-
-    // With 'Read' access and ID present in DB
+    // With 'Read' authentication/authorization [ID present in DB]
     @Test
-    public void deletePersonWithReadAndIdPresent() throws IOException{
+    public void deletePersonWithReadAuthAndIdInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "testUsername", "testPassword");
         Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
-        Assert.assertEquals(401, eo.responseCode);
+        Assert.assertEquals(403, eo.responseCode);
     }
 
 
-    // With 'Read' access and ID not present in DB
+    // With 'Read' authentication/authorization [ID not present in DB]
     @Test
-    public void deletePersonWithReadAndIdNotPresent() throws IOException{
+    public void deletePersonWithReadAuthAndIdNotInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/21", "testUsername", "testPassword");
-        Assert.assertEquals(404, eo.responseCode);
-        Assert.assertEquals("Cannot find Person with id: 21", eo.errorData);
+        Assert.assertEquals(403, eo.responseCode);
     }
 
 
     // With incorrect authentication (Both password and username are incorrect) ID present in DB
     @Test
-    public void deletePersonWithIncorrectAuthIdPresent() throws IOException{
+    public void deletePersonWithIncorrectAuthAndIdInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "Test", "Test");
         Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
         Assert.assertEquals(401, eo.responseCode);
@@ -122,7 +116,7 @@ public class DeleteTesting {
 
     // With incorrect authentication (Both password and username are incorrect) ID not present in DB
     @Test
-    public void deletePersonWithIncorrectAuthIdNotPresent() throws IOException{
+    public void deletePersonWithIncorrectAuthAndIdNotInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/21", "Test", "Test");
         Assert.assertEquals(401, eo.responseCode);
     }
@@ -132,6 +126,7 @@ public class DeleteTesting {
     @Test
     public void deletePersonWithIncorrectUsername() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "Test", "testPassword");
+        Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
         Assert.assertEquals(401, eo.responseCode);
     }
 
@@ -139,20 +134,38 @@ public class DeleteTesting {
     @Test
     public void deletePeronWithIncorrectWritePassAuth() throws IOException {
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "test", "testPassword");
+        Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
         Assert.assertEquals(401, eo.responseCode);
     }
 
-    // With incorrect 'Write' authentication (Incorrect password and incorrect username)
+    // With incorrect 'Write' authentication [Correct Username but incorrect password, ID present in DB]
     @Test
-    public void deletePersonWithIncorrectWritePass() throws IOException{
+    public void deletePersonWithIncorrectWritePassAndIdInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "admin", "Testing");
+        Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
         Assert.assertEquals(401, eo.responseCode);
     }
 
-    // With incorrect 'Write' authentication (Incorrect password and incorrect username)
+    // With incorrect 'Write' authentication [Correct Username but incorrect password, ID not present in DB]
     @Test
-    public void postPersonWithIncorrectReadPass() throws IOException{
+    public void deletePersonWithIncorrectWritePassAndIdNotInDB() throws IOException{
+        ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/21", "admin", "Testing");
+        Assert.assertEquals(401, eo.responseCode);
+    }
+
+
+    // With incorrect 'Write' authentication [Correct Username but incorrect password, ID present in DB]
+    @Test
+    public void postPersonWithIncorrectReadPassAndIdInDB() throws IOException{
         ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/20", "testUsername", "Testing");
+        Assert.assertEquals(true, connection.checkIfDataExists("Select * from Person Where ID = 20"));
+        Assert.assertEquals(401, eo.responseCode);
+    }
+
+    // With incorrect 'Write' authentication [Correct Username but incorrect password, ID not present in DB]
+    @Test
+    public void postPersonWithIncorrectReadPassAndIdNotInDB() throws IOException{
+        ErrorObject eo = (ErrorObject) connect("http://localhost:8083/v1/delete-person/21", "testUsername", "Testing");
         Assert.assertEquals(401, eo.responseCode);
     }
 
